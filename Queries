@@ -1,0 +1,82 @@
+1.	Calculate the average delivery time for restaurants with and without safety measures:
+
+SELECT Safety_Measure, AVG(Average_Delivery_Time) as AvgDeliveryTime
+FROM zomato_rating.zomato_rating
+GROUP BY Safety_Measure;
+2.	Calculate the weighted average rating for each cuisine, considering both the average rating and the safety measure.
+
+SELECT Cuisine, 
+       SUM(Rating * Safety_Measure) / SUM(Safety_Measure) as WeightedAvgRating
+FROM zomato_rating.zomato_rating
+WHERE Safety_Measure IS NOT NULL
+GROUP BY Cuisine;
+3.	Calculate the average rating and delivery time for each cuisine, considering only restaurants with a safety measure:
+
+SELECT Cuisine, 
+       AVG(Rating) as AvgRating, 
+       AVG(Average_Delivery_Time) as AvgDeliveryTime
+FROM zomato_rating.zomato_rating
+WHERE Safety_Measure IS NOT NULL
+GROUP BY Cuisine;
+4.	Calculate the cumulative average rating for each restaurant, considering all previous ratings for that restaurant:
+
+SELECT Restaurant_Name,
+       Rating,
+       AVG(Rating) OVER (PARTITION BY Restaurant_Name ORDER BY Rating) as CumulativeAvgRating
+FROM zomato_rating;
+
+5.	Count the number of restaurants with safety measures in a specific location (e.g., 'City_Name'):
+
+SELECT COUNT(*) as NumRestaurantsWithSafety 
+FROM zomato_rating.zomato_rating 
+WHERE Safety_Measure IS NOT NULL AND Location = 'City_Name';
+
+6.	Calculate the cumulative sum of safety measures within each cuisine, ordered by safety measure:
+
+SELECT Cuisine, Safety_Measure,
+       SUM(Safety_Measure) OVER (PARTITION BY Cuisine ORDER BY Safety_Measure) as CumulativeSafetySum
+FROM zomato_rating.zomato_rating
+WHERE Safety_Measure IS NOT NULL;
+
+7.	Find the restaurants with an above-average rating and below-average delivery time:
+
+WITH AvgRatingDelivery AS (
+    SELECT AVG(Rating) as AvgRating, AVG(Average_Delivery_Time) as AvgDeliveryTime
+    FROM zomato_rating.zomato_rating
+)
+SELECT Restaurant_Name, Rating, Average_Delivery_Time
+FROM zomato_rating.zo
+WHERE Rating > (SELECT AvgRating FROM AvgRatingDelivery)
+AND Average_Delivery_Time < (SELECT AvgDeliveryTime FROM AvgRatingDelivery);
+
+8.	Retrieve the top 3 restaurants with the highest safety measures in each cuisine:
+
+WITH RankedSafetyByCuisine AS (
+    SELECT Cuisine, Restaurant_Name, Safety_Measure,
+           RANK() OVER (PARTITION BY Cuisine ORDER BY Safety_Measure DESC) as SafetyRank
+    FROM zomato_rating.zomato_rating
+)
+SELECT Cuisine, Restaurant_Name, Safety_Measure
+FROM RankedSafetyByCuisine
+WHERE SafetyRank <= 3;
+
+9.	Identify restaurants with a higher-than-average rating and a lower-than-average safety measure:
+
+WITH AvgRatingSafety AS (
+    SELECT AVG(Rating) as AvgRating, AVG(Safety_Measure) as AvgSafetyMeasure
+    FROM zomato_rating.zomato_rating
+)
+SELECT Restaurant_Name, Rating, Safety_Measure
+FROM zomato_rating.zomato_rating
+WHERE Rating > (SELECT AvgRating FROM AvgRatingSafety)
+AND Safety_Measure < (SELECT AvgSafetyMeasure FROM AvgRatingSafety);
+
+10.	Retrieve the top 5 locations with the highest average rating and safety measure:
+SELECT Location, 
+       AVG(Rating) as AvgRating, 
+       AVG(Safety_Measure) as AvgSafetyMeasure
+FROM zomato_rating.zomato_rating
+GROUP BY Location
+ORDER BY AvgRating DESC, AvgSafetyMeasure DESC
+LIMIT 5;
+
